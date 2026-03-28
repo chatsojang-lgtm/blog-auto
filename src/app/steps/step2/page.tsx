@@ -12,6 +12,7 @@ function Step2Content() {
   const storeName = searchParams.get("storeName") || "";
   const storeAddress = searchParams.get("storeAddress") || "";
   const theme = searchParams.get("theme") || "";
+  const keywords = searchParams.get("keywords") || "";
 
   const [loading, setLoading] = useState(true);
   const [phase, setPhase] = useState<"search" | "generate">("search");
@@ -31,7 +32,7 @@ function Step2Content() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeName, storeAddress, theme }),
+        body: JSON.stringify({ storeName, storeAddress, theme, keywords }),
         signal: abortRef.current.signal,
       });
 
@@ -49,7 +50,7 @@ function Step2Content() {
     } finally {
       setLoading(false);
     }
-  }, [storeName, storeAddress, theme]);
+  }, [storeName, storeAddress, theme, keywords]);
 
   useEffect(() => {
     generatePost();
@@ -108,9 +109,14 @@ function Step2Content() {
         </div>
         <h2 className="text-lg font-bold mb-2">문제가 생겼어요</h2>
         <p className="text-sm text-[var(--color-text-light)] mb-6">{error}</p>
-        <button onClick={generatePost} className="h-11 px-6 rounded-xl text-sm font-semibold bg-[var(--color-primary)] text-white">
-          다시 시도하기
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => router.back()} className="h-11 px-6 rounded-xl text-sm font-semibold bg-white text-[var(--color-text)] border border-[var(--color-border)]">
+            정보 수정하기
+          </button>
+          <button onClick={generatePost} className="h-11 px-6 rounded-xl text-sm font-semibold bg-[var(--color-primary)] text-white">
+            다시 시도하기
+          </button>
+        </div>
       </div>
     );
   }

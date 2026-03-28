@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     const storeName = body.storeName || "";
     const storeAddress = body.storeAddress || "";
     const theme = body.theme || "";
+    const keywords = body.keywords || "";
 
     if (!storeName || !storeAddress || !theme) {
       return NextResponse.json(
@@ -83,11 +84,38 @@ export async function POST(request: NextRequest) {
     const searchResults = await searchStoreInfo(storeName, storeAddress, theme);
     console.log(`[검색 완료] 결과 길이: ${searchResults.length}자`);
 
+    // === 검색 결과 검증: 매장 정보를 찾지 못한 경우 에러 반환 ===
+    const noInfoPatterns = [
+      "확인 불가",
+      "검색 결과가 없",
+      "찾을 수 없",
+      "정보를 찾지 못",
+      "검색되지 않",
+      "확인되지 않",
+      "관련 정보가 없",
+    ];
+    const noInfoCount = noInfoPatterns.filter((p) =>
+      searchResults.includes(p)
+    ).length;
+    if (
+      searchResults.length < 100 ||
+      noInfoCount >= 4
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "입력하신 매장 정보를 인터넷에서 찾지 못했어요. 매장 이름과 주소를 다시 확인해주세요.",
+        },
+        { status: 404 }
+      );
+    }
+
     const input: GenerateInput = {
       storeName,
       storeAddress,
       theme,
       searchResults,
+      keywords,
     };
 
     // === 2단계: 검색 결과 기반 블로그 글 생성 ===

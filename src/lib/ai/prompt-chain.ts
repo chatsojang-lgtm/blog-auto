@@ -8,6 +8,7 @@ export interface GenerateInput {
   storeAddress: string;
   theme: string;
   searchResults: string;
+  keywords: string;
 }
 
 /** 웹 검색용 프롬프트 */
@@ -61,7 +62,7 @@ ${input.searchResults}
 - 소제목은 반드시 <h2>, <h3> 태그를 사용하라.
 - 문단은 최대 2~3문장 단위로 <p> 태그로 나누어라.
 - 핵심 단어 1~2개에만 <strong> 태그를 적용하라. 남발 금지.
-- 이모지는 소제목 앞에만 1개씩 제한 사용.`;
+- 이모지는 소제목 앞에만 1개씩 제한 사용.${input.keywords ? `\n\n[사용자 지정 키워드]\n다음 키워드를 글 내용에 자연스럽게 포함하라: ${input.keywords}` : ""}`;
 }
 
 /** 1단계: 서론 생성 */
@@ -153,7 +154,7 @@ function buildTitlePrompt(input: GenerateInput): string {
 3. "맛집 맛집추천 강남맛집"처럼 명사만 나열 금지. 자연스러운 문장 형태.
 4. 핵심 키워드는 1~2회만 포함.
 5. "${input.theme}" 테마가 드러나도록 작성.
-6. 클릭하고 싶게 만드는 호기심 유발 요소 포함.
+6. 클릭하고 싶게 만드는 호기심 유발 요소 포함.${input.keywords ? `\n7. 가능하면 다음 키워드 중 하나를 제목에 반영하라: ${input.keywords}` : ""}
 
 제목 텍스트만 출력하라. 따옴표나 설명 없이 제목만.`;
 }

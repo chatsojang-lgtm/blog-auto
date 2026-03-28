@@ -70,7 +70,7 @@ export default function Step3() {
 
       <div className="px-4 pt-5 pb-3 text-center">
         <div className="w-14 h-14 mx-auto mb-3 bg-green-50 rounded-full flex items-center justify-center">
-          <span className="text-2xl">&#10024;</span>
+          <span className="text-2xl">{"\u2728"}</span>
         </div>
         <h1 className="text-xl font-bold mb-1">글이 완성됐어요!</h1>
         <p className="text-sm text-[var(--color-text-light)]">아래 순서대로 블로그에 올려보세요</p>
@@ -83,7 +83,7 @@ export default function Step3() {
               <p className="text-xs text-[var(--color-text-light)] mb-0.5">제목</p>
               <p className="text-sm font-semibold truncate">{title}</p>
             </div>
-            <span className="text-xl flex-shrink-0 ml-2">{copied && copyType === "title" ? "&#9989;" : "&#128203;"}</span>
+            <span className="text-xl flex-shrink-0 ml-2">{copied && copyType === "title" ? "\u2705" : "\uD83D\uDCCB"}</span>
           </div>
           {copied && copyType === "title" && <p className="text-green-600 text-xs font-semibold mt-1">제목이 복사됐어요!</p>}
         </button>
@@ -92,21 +92,21 @@ export default function Step3() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-[var(--color-text-light)] mb-0.5">본문 내용</p>
-              <p className="text-sm font-semibold">&#128203; 본문 복사하기</p>
+              <p className="text-sm font-semibold">{"\uD83D\uDCCB"} 본문 복사하기</p>
             </div>
-            <span className="text-xl flex-shrink-0 ml-2">{copied && copyType === "body" ? "&#9989;" : "&#128203;"}</span>
+            <span className="text-xl flex-shrink-0 ml-2">{copied && copyType === "body" ? "\u2705" : "\uD83D\uDCCB"}</span>
           </div>
           {copied && copyType === "body" && <p className="text-green-600 text-xs font-semibold mt-1">본문이 복사됐어요!</p>}
         </button>
 
         <button onClick={() => copyToClipboard("all")} className={`w-full p-4 rounded-xl border text-center transition-all text-base font-bold ${copied && copyType === "all" ? "border-green-400 bg-green-50 text-green-700" : "border-[var(--color-primary)] bg-blue-50 text-[var(--color-primary)] hover:bg-blue-100"}`}>
-          {copied && copyType === "all" ? "&#9989; 전체가 복사됐어요!" : "&#128203; 제목 + 본문 한번에 복사"}
+          {copied && copyType === "all" ? "\u2705 전체가 복사됐어요!" : "\uD83D\uDCCB 제목 + 본문 한번에 복사"}
         </button>
       </div>
 
       <div className="px-4 mb-6">
         <div className="bg-white rounded-xl p-4 border border-[var(--color-border)]">
-          <h3 className="text-sm font-bold mb-3">&#128221; 블로그에 올리는 방법</h3>
+          <h3 className="text-sm font-bold mb-3">{"\uD83D\uDCDD"} 블로그에 올리는 방법</h3>
           <div className="space-y-3">
             <GuideStep number={1} title="네이버 블로그 열기" description="아래 버튼을 눌러 블로그를 열어주세요" />
             <GuideStep number={2} title={'"글쓰기" 버튼 누르기'} description="블로그 화면 위쪽의 초록색 글쓰기 버튼" />

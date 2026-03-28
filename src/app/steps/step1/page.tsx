@@ -19,6 +19,7 @@ export default function Step1() {
   const [storeAddress, setStoreAddress] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("");
   const [customTheme, setCustomTheme] = useState("");
+  const [keywords, setKeywords] = useState("");
   const [isCustom, setIsCustom] = useState(false);
 
   const activeTheme = isCustom ? customTheme.trim() : selectedTheme;
@@ -45,6 +46,7 @@ export default function Step1() {
       storeAddress: storeAddress.trim(),
       theme: activeTheme,
     });
+    if (keywords.trim()) params.set("keywords", keywords.trim());
     router.push(`/steps/step2?${params.toString()}`);
   };
 
@@ -166,6 +168,28 @@ export default function Step1() {
             />
           </div>
         )}
+      </div>
+
+      <div className="mb-5">
+        <label htmlFor="keywords" className="block text-sm font-semibold mb-1.5">
+          포함할 키워드 <span className="text-xs font-normal text-[var(--color-text-light)]">(선택)</span>
+        </label>
+        <p className="text-xs text-[var(--color-text-light)] mb-1.5">
+          블로그 글에 포함하고 싶은 키워드를 입력하면 반영돼요
+        </p>
+        <input
+          id="keywords"
+          type="text"
+          value={keywords}
+          onChange={(e) => setKeywords(e.target.value)}
+          placeholder="예) 주차가능, 단체석, 런치특선"
+          className="
+            w-full h-11 px-4 rounded-lg border border-[var(--color-border)]
+            text-sm bg-white
+            focus:border-[var(--color-primary)] focus:outline-none
+            transition-colors placeholder:text-gray-400
+          "
+        />
       </div>
 
       <BigButton onClick={handleNext} disabled={!canProceed}>
