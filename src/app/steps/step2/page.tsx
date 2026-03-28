@@ -1,150 +1,229 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StepLayout from "@/components/StepLayout";
 import BigButton from "@/components/BigButton";
 
-const TOPIC_TEMPLATES: Record<string, { icon: string; label: string; value: string }[]> = {
-  "맛집/음식점": [
-    { icon: "\uD83C\uDF56", label: "인기 메뉴 소개", value: "인기 메뉴 소개" },
-    { icon: "\uD83C\uDFE0", label: "우리 가게 소개", value: "가게 소개" },
-    { icon: "\uD83C\uDF89", label: "이벤트/할인 소식", value: "이벤트 소식" },
-    { icon: "\uD83D\uDC68\u200D\uD83C\uDF73", label: "사장님 이야기", value: "사장님 이야기" },
-  ],
-  "미용실/헤어샵": [
-    { icon: "\uD83D\uDC87", label: "시술 후기/사례", value: "시술 사례" },
-    { icon: "\uD83C\uDFE0", label: "우리 샵 소개", value: "샵 소개" },
-    { icon: "\u2728", label: "이달의 스타일 추천", value: "스타일 추천" },
-    { icon: "\uD83D\uDCB0", label: "가격/이벤트 안내", value: "가격 안내" },
-  ],
-  "헬스장/PT": [
-    { icon: "\uD83C\uDFCB\uFE0F", label: "회원 변화 후기", value: "회원 후기" },
-    { icon: "\uD83C\uDFE0", label: "시설 소개", value: "시설 소개" },
-    { icon: "\uD83D\uDCAA", label: "운동 팁/노하우", value: "운동 팁" },
-    { icon: "\uD83C\uDF89", label: "이벤트/할인 안내", value: "이벤트 안내" },
-  ],
-  default: [
-    { icon: "\uD83C\uDFE0", label: "우리 가게 소개", value: "가게 소개" },
-    { icon: "\u2B50", label: "인기 상품/서비스", value: "인기 서비스" },
-    { icon: "\uD83C\uDF89", label: "이벤트/소식", value: "이벤트 소식" },
-    { icon: "\uD83D\uDDE3\uFE0F", label: "사장님 이야기", value: "사장님 이야기" },
-  ],
-};
-
 function Step2Content() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const storeName = searchParams.get("storeName") || "";
-  const category = searchParams.get("category") || "";
+  const storeAddress = searchParams.get("storeAddress") || "";
+  const theme = searchParams.get("theme") || "";
 
-  const [selectedTopic, setSelectedTopic] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [extraInfo, setExtraInfo] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState<"search" | "generate">("search");
+  const [title, setTitle] = useState("");
+  const [html, setHtml] = useState("");
+  const [error, setError] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
 
-  const topics = TOPIC_TEMPLATES[category] || TOPIC_TEMPLATES["default"];
-  const canProceed = selectedTopic.length > 0;
+  const generatePost = useCallback(async () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    abortRef.current = new AbortController();
 
-  const handleNext = () => {
-    if (!canProceed) return;
-    const params = new URLSearchParams({
-      storeName,
-      category,
-      topic: selectedTopic,
-      keyword: keyword.trim(),
-      extraInfo: extraInfo.trim(),
-    });
-    router.push(`/steps/step3?${params.toString()}`);
+    setLoading(true);
+    setError("");
+    setPhase("search");
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeName, storeAddress, theme }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "\uAE00 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694");
+      }
+
+      const data = await res.json();
+      setTitle(data.title);
+      setHtml(data.html);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError(
+        err instanceof Error ? err.message : "\uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [storeName, storeAddress, theme]);
+
+  useEffect(() => {
+    generatePost();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [generatePost]);
+
+  // \uB85C\uB529 \uC2DC \uB2E8\uACC4 \uC804\uD658 \uC560\uB2C8\uBA54\uC774\uC158 (15\uCD08 \uD6C4 generate \uB2E8\uACC4\uB85C)
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setPhase("generate"), 15000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  const handleProceed = () => {
+    sessionStorage.setItem("blogTitle", title);
+    sessionStorage.setItem("blogHtml", html);
+    router.push("/steps/step3");
   };
 
+  // \uB85C\uB529 \uC0C1\uD0DC
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div className="w-20 h-20 mb-6 bg-blue-100 rounded-full flex items-center justify-center">
+          <span className="text-4xl animate-bounce">
+            {phase === "search" ? "\uD83D\uDD0D" : "\u270D\uFE0F"}
+          </span>
+        </div>
+        <h2 className="text-2xl font-bold mb-3">
+          {phase === "search"
+            ? `'${storeName}' \uB9E4\uC7A5 \uC815\uBCF4\uB97C \uCC3E\uACE0 \uC788\uC5B4\uC694`
+            : "\uAE00\uC744 \uC4F0\uACE0 \uC788\uC5B4\uC694"}
+        </h2>
+        <p className="text-lg text-[var(--color-text-light)] leading-relaxed">
+          {phase === "search"
+            ? "\uC2E4\uC81C \uB9E4\uC7A5 \uC815\uBCF4\uB97C \uAC80\uC0C9\uD558\uC5EC\n\uC815\uD655\uD55C \uB0B4\uC6A9\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC5B4\uC694"
+            : "\uCC3E\uC740 \uC815\uBCF4\uB97C \uBC14\uD0D5\uC73C\uB85C\n\uBE14\uB85C\uADF8 \uAE00\uC744 \uC791\uC131\uD558\uACE0 \uC788\uC5B4\uC694"}
+        </p>
+
+        <div className="mt-8 w-full max-w-xs">
+          <div className="space-y-3">
+            <LoadingStep
+              label={`'${storeName}' \uB9E4\uC7A5 \uC815\uBCF4 \uAC80\uC0C9 \uC911...`}
+              active={phase === "search"}
+              done={phase === "generate"}
+            />
+            <LoadingStep
+              label="\uBA54\uB274, \uB9AC\uBDF0, \uC601\uC5C5\uC815\uBCF4 \uC218\uC9D1 \uC911..."
+              active={phase === "search"}
+              done={phase === "generate"}
+            />
+            <LoadingStep
+              label="\uBE14\uB85C\uADF8 \uAE00 \uC791\uC131 \uC911..."
+              active={phase === "generate"}
+              done={false}
+            />
+            <LoadingStep
+              label="SEO \uCD5C\uC801\uD654 \uC911..."
+              active={phase === "generate"}
+              done={false}
+            />
+          </div>
+        </div>
+
+        <p className="mt-6 text-base text-[var(--color-text-light)]">
+          \uBCF4\uD1B5 1~2\uBD84 \uC815\uB3C4 \uAC78\uB824\uC694
+        </p>
+      </div>
+    );
+  }
+
+  // \uC5D0\uB7EC \uC0C1\uD0DC
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div className="w-20 h-20 mb-6 bg-red-100 rounded-full flex items-center justify-center">
+          <span className="text-4xl">{"\uD83D\uDE14"}</span>
+        </div>
+        <h2 className="text-2xl font-bold mb-3">\uBB38\uC81C\uAC00 \uC0DD\uACBC\uC5B4\uC694</h2>
+        <p className="text-lg text-[var(--color-text-light)] mb-8">{error}</p>
+        <button
+          onClick={generatePost}
+          className="h-14 px-8 rounded-2xl text-lg font-bold bg-[var(--color-primary)] text-white"
+        >
+          \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uAE30
+        </button>
+      </div>
+    );
+  }
+
+  // \uACB0\uACFC \uBBF8\uB9AC\uBCF4\uAE30
   return (
     <StepLayout
       currentStep={2}
-      totalSteps={4}
-      title="어떤 글을 쓸까요?"
-      description={`'${storeName}' 블로그에 올릴 글의 주제를 골라주세요`}
+      totalSteps={3}
+      title="\uC774\uB807\uAC8C \uC62C\uB9B4\uAE4C\uC694?"
+      description="\uB9CC\uB4E4\uC5B4\uC9C4 \uAE00\uC744 \uD655\uC778\uD574 \uBCF4\uC138\uC694"
     >
-      {/* 주제 선택 */}
-      <div className="mb-8">
-        <p className="text-lg font-semibold mb-3">글 주제 고르기</p>
-        <div className="grid grid-cols-2 gap-3">
-          {topics.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setSelectedTopic(t.value)}
-              className={`
-                flex flex-col items-center gap-2 p-5 rounded-2xl border-2
-                transition-all duration-200 active:scale-[0.97]
-                ${
-                  selectedTopic === t.value
-                    ? "border-[var(--color-primary)] bg-blue-50 shadow-md"
-                    : "border-[var(--color-border)] bg-white hover:border-blue-300"
-                }
-              `}
-            >
-              <span className="text-3xl">{t.icon}</span>
-              <span
-                className={`text-lg font-semibold ${
-                  selectedTopic === t.value ? "text-[var(--color-primary)]" : ""
-                }`}
-              >
-                {t.label}
-              </span>
-            </button>
-          ))}
+      {/* \uC81C\uBAA9 \uBBF8\uB9AC\uBCF4\uAE30 */}
+      <div className="mb-6">
+        <p className="text-base font-semibold text-[var(--color-text-light)] mb-2">
+          \uC81C\uBAA9
+        </p>
+        <div className="bg-white rounded-xl p-4 border-2 border-[var(--color-border)]">
+          <h2 className="text-xl font-bold">{title}</h2>
         </div>
       </div>
 
-      {/* 검색어 입력 (선택) */}
+      {/* \uBCF8\uBB38 \uBBF8\uB9AC\uBCF4\uAE30 */}
       <div className="mb-6">
-        <label htmlFor="keyword" className="block text-lg font-semibold mb-2">
-          검색어 (선택사항)
-        </label>
-        <p className="text-base text-[var(--color-text-light)] mb-3">
-          손님들이 검색할 만한 단어를 적어주세요
+        <p className="text-base font-semibold text-[var(--color-text-light)] mb-2">
+          \uBCF8\uBB38 \uBBF8\uB9AC\uBCF4\uAE30
         </p>
-        <input
-          id="keyword"
-          type="text"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="예) 강남역 맛집, 홍대 미용실"
-          className="
-            w-full h-14 px-5 rounded-xl border-2 border-[var(--color-border)]
-            text-lg bg-white
-            focus:border-[var(--color-primary)] focus:outline-none
-            transition-colors placeholder:text-gray-400
-          "
+        <div
+          className="bg-white rounded-xl p-5 border-2 border-[var(--color-border)] prose prose-lg max-w-none"
+          style={{ fontSize: "17px", lineHeight: "1.8" }}
+          dangerouslySetInnerHTML={{ __html: html }}
         />
       </div>
 
-      {/* 추가 정보 (선택) */}
-      <div className="mb-6">
-        <label htmlFor="extraInfo" className="block text-lg font-semibold mb-2">
-          추가로 알려줄 내용 (선택사항)
-        </label>
-        <p className="text-base text-[var(--color-text-light)] mb-3">
-          가게의 특별한 점을 적어주시면 더 좋은 글이 나와요
-        </p>
-        <textarea
-          id="extraInfo"
-          value={extraInfo}
-          onChange={(e) => setExtraInfo(e.target.value)}
-          placeholder="예) 주차 가능, 20년 경력 원장님, 시그니처 메뉴는 숙성 삼겹살"
-          rows={3}
-          className="
-            w-full px-5 py-4 rounded-xl border-2 border-[var(--color-border)]
-            text-lg bg-white resize-none
-            focus:border-[var(--color-primary)] focus:outline-none
-            transition-colors placeholder:text-gray-400
-          "
-        />
+      {/* \uB2E4\uC2DC\uC4F0\uAE30 \uBC84\uD2BC */}
+      <div className="mb-4">
+        <button
+          onClick={generatePost}
+          className="w-full h-14 rounded-2xl text-lg font-semibold bg-white text-[var(--color-text)] border-2 border-[var(--color-border)] hover:bg-gray-50 transition-colors"
+        >
+          {"\uD83D\uDD04"} \uB2E4\uC2DC \uC368\uC8FC\uC138\uC694
+        </button>
       </div>
 
-      <BigButton onClick={handleNext} disabled={!canProceed} variant="success">
-        글 만들어 주세요
+      <BigButton onClick={handleProceed} variant="success">
+        \uC774 \uAE00\uB85C \uD560\uAC8C\uC694
       </BigButton>
     </StepLayout>
+  );
+}
+
+function LoadingStep({
+  label,
+  active,
+  done,
+}: {
+  label: string;
+  active: boolean;
+  done: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 p-3 rounded-xl ${
+        done ? "bg-green-50" : active ? "bg-blue-50" : "bg-gray-50"
+      }`}
+    >
+      {done ? (
+        <span className="text-green-500 font-bold">{"\u2713"}</span>
+      ) : active ? (
+        <span className="inline-block w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+      ) : (
+        <span className="inline-block w-5 h-5 rounded-full bg-gray-200" />
+      )}
+      <span
+        className={`text-base ${
+          done ? "text-green-700" : active ? "text-blue-700" : "text-gray-400"
+        }`}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -153,7 +232,7 @@ export default function Step2() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-screen">
-          <span className="text-xl text-[var(--color-text-light)]">불러오는 중...</span>
+          <span className="text-xl text-[var(--color-text-light)]">\uBD88\uB7EC\uC624\uB294 \uC911...</span>
         </div>
       }
     >

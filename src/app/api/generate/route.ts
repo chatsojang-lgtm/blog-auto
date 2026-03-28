@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  buildSearchPrompt,
   buildSystemPrompt,
   buildIntroPrompt,
   buildBody1Prompt,
@@ -15,7 +16,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
-/** Claude API 호출 헬퍼 */
+/** Claude API 호출 헬퍼 (일반 텍스트 생성용) */
 async function callClaude(
   systemPrompt: string,
   userPrompt: string
@@ -34,27 +35,63 @@ async function callClaude(
   return "";
 }
 
+/** Claude 웹 검색을 이용한 매장 정보 수집 */
+async function searchStoreInfo(
+  storeName: string,
+  storeAddress: string,
+  theme: string
+): Promise<string> {
+  const searchPrompt = buildSearchPrompt({ storeName, storeAddress, theme });
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4000,
+    tools: [
+      {
+        type: "web_search_20250305" as const,
+        name: "web_search" as const,
+        max_uses: 10,
+      },
+    ],
+    messages: [{ role: "user", content: searchPrompt }],
+  });
+
+  // 응답에서 텍스트 블록만 추출
+  const textBlocks = message.content.filter(
+    (block): block is Anthropic.TextBlock => block.type === "text"
+  );
+
+  return textBlocks.map((b) => b.text).join("\n\n");
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const input: GenerateInput = {
-      storeName: body.storeName || "",
-      category: body.category || "",
-      topic: body.topic || "",
-      keyword: body.keyword || "",
-      extraInfo: body.extraInfo || "",
-    };
+    const storeName = body.storeName || "";
+    const storeAddress = body.storeAddress || "";
+    const theme = body.theme || "";
 
-    if (!input.storeName || !input.category || !input.topic) {
+    if (!storeName || !storeAddress || !theme) {
       return NextResponse.json(
-        { error: "가게 이름, 종류, 주제를 모두 입력해주세요." },
+        { error: "매장 이름, 주소, 테마를 모두 입력해주세요." },
         { status: 400 }
       );
     }
 
-    const systemPrompt = buildSystemPrompt(input);
+    // === 1단계: 온라인 검색으로 실제 매장 정보 수집 ===
+    console.log(`[검색 시작] ${storeName} - ${storeAddress}`);
+    const searchResults = await searchStoreInfo(storeName, storeAddress, theme);
+    console.log(`[검색 완료] 결과 길이: ${searchResults.length}자`);
 
-    // === 4단계 프롬프트 체이닝 (PDF 4절 적용) ===
+    const input: GenerateInput = {
+      storeName,
+      storeAddress,
+      theme,
+      searchResults,
+    };
+
+    // === 2단계: 검색 결과 기반 블로그 글 생성 ===
+    const systemPrompt = buildSystemPrompt(input);
 
     // Step A: 제목 + 서론 동시 생성
     const [titleResult, introResult] = await Promise.all([
@@ -86,10 +123,10 @@ export async function POST(request: NextRequest) {
     );
 
     // SEO 후처리 파이프라인 실행
-    const keyword = input.keyword || input.storeName;
+    const keyword = storeName;
     const { processedHtml, stats } = runPostProcessing(fullHtml, keyword);
 
-    // 제목 정리 (따옴표, 줄바꿈 제거)
+    // 제목 정리
     const cleanTitle = titleResult
       .replace(/["""'']/g, "")
       .replace(/\n/g, "")
@@ -103,7 +140,6 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("글 생성 오류 상세:", errMsg);
-    console.error("API KEY 앞 20자:", process.env.ANTHROPIC_API_KEY?.substring(0, 20));
     return NextResponse.json(
       { error: `글 생성 중 문제가 발생했어요: ${errMsg}` },
       { status: 500 }

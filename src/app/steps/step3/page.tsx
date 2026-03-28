@@ -1,186 +1,294 @@
 "use client";
 
-import { useState, useEffect, Suspense, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import StepLayout from "@/components/StepLayout";
-import BigButton from "@/components/BigButton";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-function Step3Content() {
+export default function Step3() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const storeName = searchParams.get("storeName") || "";
-  const category = searchParams.get("category") || "";
-  const topic = searchParams.get("topic") || "";
-  const keyword = searchParams.get("keyword") || "";
-  const extraInfo = searchParams.get("extraInfo") || "";
-
-  const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [html, setHtml] = useState("");
-  const [error, setError] = useState("");
-
-  const generatePost = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeName, category, topic, keyword, extraInfo }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "글 생성에 실패했어요");
-      }
-
-      const data = await res.json();
-      setTitle(data.title);
-      setHtml(data.html);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "문제가 발생했어요. 다시 시도해주세요."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [storeName, category, topic, keyword, extraInfo]);
+  const [copied, setCopied] = useState(false);
+  const [copyType, setCopyType] = useState<"" | "title" | "body" | "all">("");
 
   useEffect(() => {
-    generatePost();
-  }, [generatePost]);
+    const savedTitle = sessionStorage.getItem("blogTitle") || "";
+    const savedHtml = sessionStorage.getItem("blogHtml") || "";
+    setTitle(savedTitle);
+    setHtml(savedHtml);
 
-  const handleProceed = () => {
-    // Step4로 이동 - title과 html을 sessionStorage에 저장
-    sessionStorage.setItem("blogTitle", title);
-    sessionStorage.setItem("blogHtml", html);
-    router.push("/steps/step4");
-  };
+    if (!savedTitle && !savedHtml) {
+      router.push("/steps/step1");
+    }
+  }, [router]);
 
-  // 로딩 상태
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <div className="w-20 h-20 mb-6 bg-blue-100 rounded-full flex items-center justify-center">
-          <span className="text-4xl animate-bounce">&#9997;&#65039;</span>
+  function htmlToPlainText(htmlStr: string): string {
+    return htmlStr
+      .replace(/<h[23][^>]*>/gi, "\n\n\u2605 ")
+      .replace(/<\/h[23]>/gi, " \u2605\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<li>/gi, "\n\u2022 ")
+      .replace(/<\/li>/gi, "")
+      .replace(/<strong>/gi, "**")
+      .replace(/<\/strong>/gi, "**")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  async function copyToClipboard(type: "title" | "body" | "all") {
+    let textToCopy = "";
+    let htmlToCopy = "";
+
+    if (type === "title") {
+      textToCopy = title;
+      htmlToCopy = title;
+    } else if (type === "body") {
+      textToCopy = htmlToPlainText(html);
+      htmlToCopy = html;
+    } else {
+      textToCopy = title + "\n\n" + htmlToPlainText(html);
+      htmlToCopy = `<h1>${title}</h1>\n${html}`;
+    }
+
+    try {
+      if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+        const blob = new Blob([htmlToCopy], { type: "text/html" });
+        const textBlob = new Blob([textToCopy], { type: "text/plain" });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": blob,
+            "text/plain": textBlob,
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(textToCopy);
+      }
+
+      setCopied(true);
+      setCopyType(type);
+      setTimeout(() => {
+        setCopied(false);
+        setCopyType("");
+      }, 2000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = textToCopy;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      setCopied(true);
+      setCopyType(type);
+      setTimeout(() => {
+        setCopied(false);
+        setCopyType("");
+      }, 2000);
+    }
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {/* \uC0C1\uB2E8 \uC9C4\uD589\uBC14 */}
+      <div className="px-5 pt-6 pb-2">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-base text-[var(--color-text-light)]">
+            3 / 3 \uB2E8\uACC4
+          </span>
         </div>
-        <h2 className="text-2xl font-bold mb-3">글을 쓰고 있어요</h2>
-        <p className="text-lg text-[var(--color-text-light)] leading-relaxed">
-          잠시만 기다려 주세요
-          <br />
-          보통 30초~1분 정도 걸려요
-        </p>
+        <div className="w-full h-3 bg-[var(--color-border)] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[var(--color-success)] rounded-full transition-all duration-500"
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
 
-        {/* 진행 애니메이션 */}
-        <div className="mt-8 w-full max-w-xs">
-          <div className="space-y-3">
-            <LoadingStep label="글 주제 분석 중..." active={true} />
-            <LoadingStep label="서론 작성 중..." active={true} />
-            <LoadingStep label="본문 작성 중..." active={true} />
-            <LoadingStep label="마무리 중..." active={true} />
+      {/* \uC644\uB8CC \uD5E4\uB354 */}
+      <div className="px-5 pt-6 pb-4 text-center">
+        <div className="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+          <span className="text-4xl">{"\u2728"}</span>
+        </div>
+        <h1 className="text-2xl font-bold mb-2">\uAE00\uC774 \uC644\uC131\uB410\uC5B4\uC694!</h1>
+        <p className="text-lg text-[var(--color-text-light)]">
+          \uC544\uB798 \uC21C\uC11C\uB300\uB85C \uBE14\uB85C\uADF8\uC5D0 \uC62C\uB824\uBCF4\uC138\uC694
+        </p>
+      </div>
+
+      {/* \uBCF5\uC0AC \uBC84\uD2BC \uC601\uC5ED */}
+      <div className="px-5 space-y-3 mb-8">
+        <button
+          onClick={() => copyToClipboard("title")}
+          className={`
+            w-full p-5 rounded-2xl border-2 text-left transition-all
+            ${
+              copied && copyType === "title"
+                ? "border-green-500 bg-green-50"
+                : "border-[var(--color-border)] bg-white hover:border-blue-300"
+            }
+          `}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-base text-[var(--color-text-light)] mb-1">
+                \uC81C\uBAA9
+              </p>
+              <p className="text-lg font-semibold truncate">{title}</p>
+            </div>
+            <span className="text-3xl flex-shrink-0 ml-3">
+              {copied && copyType === "title" ? "\u2705" : "\uD83D\uDCCB"}
+            </span>
+          </div>
+          {copied && copyType === "title" && (
+            <p className="text-green-600 font-semibold mt-2">
+              \uC81C\uBAA9\uC774 \uBCF5\uC0AC\uB410\uC5B4\uC694!
+            </p>
+          )}
+        </button>
+
+        <button
+          onClick={() => copyToClipboard("body")}
+          className={`
+            w-full p-5 rounded-2xl border-2 text-left transition-all
+            ${
+              copied && copyType === "body"
+                ? "border-green-500 bg-green-50"
+                : "border-[var(--color-border)] bg-white hover:border-blue-300"
+            }
+          `}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-base text-[var(--color-text-light)] mb-1">
+                \uBCF8\uBB38 \uB0B4\uC6A9
+              </p>
+              <p className="text-lg font-semibold">
+                {"\uD83D\uDCCB"} \uBCF8\uBB38 \uBCF5\uC0AC\uD558\uAE30
+              </p>
+            </div>
+            <span className="text-3xl flex-shrink-0 ml-3">
+              {copied && copyType === "body" ? "\u2705" : "\uD83D\uDCCB"}
+            </span>
+          </div>
+          {copied && copyType === "body" && (
+            <p className="text-green-600 font-semibold mt-2">
+              \uBCF8\uBB38\uC774 \uBCF5\uC0AC\uB410\uC5B4\uC694!
+            </p>
+          )}
+        </button>
+
+        <button
+          onClick={() => copyToClipboard("all")}
+          className={`
+            w-full p-6 rounded-2xl border-2 text-center transition-all text-xl font-bold
+            ${
+              copied && copyType === "all"
+                ? "border-green-500 bg-green-50 text-green-700"
+                : "border-[var(--color-primary)] bg-blue-50 text-[var(--color-primary)] hover:bg-blue-100"
+            }
+          `}
+        >
+          {copied && copyType === "all"
+            ? "\u2705 \uC804\uCCB4\uAC00 \uBCF5\uC0AC\uB410\uC5B4\uC694!"
+            : "\uD83D\uDCCB \uC81C\uBAA9 + \uBCF8\uBB38 \uD55C\uBC88\uC5D0 \uBCF5\uC0AC\uD558\uAE30"}
+        </button>
+      </div>
+
+      {/* \uBC1C\uD589 \uAC00\uC774\uB4DC */}
+      <div className="px-5 mb-8">
+        <div className="bg-white rounded-2xl p-6 border-2 border-[var(--color-border)]">
+          <h3 className="text-xl font-bold mb-4">
+            {"\uD83D\uDCDD"} \uBE14\uB85C\uADF8\uC5D0 \uC62C\uB9AC\uB294 \uBC29\uBC95
+          </h3>
+          <div className="space-y-5">
+            <GuideStep
+              number={1}
+              title="\uB124\uC774\uBC84 \uBE14\uB85C\uADF8 \uC5F4\uAE30"
+              description="\uC544\uB798 \uBC84\uD2BC\uC744 \uB20C\uB7EC \uBE14\uB85C\uADF8\uB97C \uC5F4\uC5B4\uC8FC\uC138\uC694"
+            />
+            <GuideStep
+              number={2}
+              title={'"\uAE00\uC4F0\uAE30" \uBC84\uD2BC \uB204\uB974\uAE30'}
+              description="\uBE14\uB85C\uADF8 \uD654\uBA74 \uC704\uCABD\uC5D0 \uC788\uB294 \uCD08\uB85D\uC0C9 \uAE00\uC4F0\uAE30 \uBC84\uD2BC\uC744 \uB20C\uB7EC\uC8FC\uC138\uC694"
+            />
+            <GuideStep
+              number={3}
+              title="\uC81C\uBAA9 \uBD99\uC5EC\uB123\uAE30"
+              description='\uC704\uC5D0\uC11C "\uC81C\uBAA9 \uBCF5\uC0AC\uD558\uAE30"\uB97C \uB204\uB978 \uB4A4, \uC81C\uBAA9 \uCE78\uC5D0 \uBD99\uC5EC\uB123\uAE30 \uD574\uC8FC\uC138\uC694'
+            />
+            <GuideStep
+              number={4}
+              title="\uBCF8\uBB38 \uBD99\uC5EC\uB123\uAE30"
+              description='"\uBCF8\uBB38 \uBCF5\uC0AC\uD558\uAE30"\uB97C \uB204\uB978 \uB4A4, \uAE00 \uB0B4\uC6A9 \uCE78\uC5D0 \uBD99\uC5EC\uB123\uAE30 \uD574\uC8FC\uC138\uC694'
+            />
+            <GuideStep
+              number={5}
+              title={'"\uBC1C\uD589" \uBC84\uD2BC \uB204\uB974\uAE30'}
+              description="\uC624\uB978\uCABD \uC704\uC758 \uBC1C\uD589 \uBC84\uD2BC\uC744 \uB204\uB974\uBA74 \uB05D\uC774\uC5D0\uC694!"
+            />
           </div>
         </div>
       </div>
-    );
-  }
 
-  // 에러 상태
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <div className="w-20 h-20 mb-6 bg-red-100 rounded-full flex items-center justify-center">
-          <span className="text-4xl">&#128532;</span>
-        </div>
-        <h2 className="text-2xl font-bold mb-3">문제가 생겼어요</h2>
-        <p className="text-lg text-[var(--color-text-light)] mb-8">{error}</p>
-        <button
-          onClick={generatePost}
-          className="h-14 px-8 rounded-2xl text-lg font-bold bg-[var(--color-primary)] text-white"
+      {/* \uB124\uC774\uBC84 \uBE14\uB85C\uADF8 \uBC14\uB85C\uAC00\uAE30 */}
+      <div className="px-5 mb-6">
+        <a
+          href="https://blog.naver.com/MyBlog.naver"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            flex items-center justify-center gap-2
+            w-full h-16 rounded-2xl text-xl font-bold
+            bg-[#03C75A] hover:bg-[#02b350] text-white
+            shadow-lg transition-all duration-200 active:scale-[0.98]
+          "
         >
-          다시 시도하기
+          {"\uD83D\uDFE2"} \uB124\uC774\uBC84 \uBE14\uB85C\uADF8 \uC5F4\uAE30
+        </a>
+      </div>
+
+      {/* \uCC98\uC74C\uC73C\uB85C */}
+      <div className="px-5 pb-10">
+        <button
+          onClick={() => {
+            sessionStorage.removeItem("blogTitle");
+            sessionStorage.removeItem("blogHtml");
+            router.push("/");
+          }}
+          className="
+            w-full h-14 rounded-2xl text-lg font-semibold
+            bg-white text-[var(--color-text-light)] border-2 border-[var(--color-border)]
+            hover:bg-gray-50 transition-colors
+          "
+        >
+          \uCC98\uC74C\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30
         </button>
       </div>
-    );
-  }
-
-  // 결과 미리보기
-  return (
-    <StepLayout
-      currentStep={3}
-      totalSteps={4}
-      title="이렇게 올릴까요?"
-      description="만들어진 글을 확인해 보세요"
-    >
-      {/* 제목 미리보기 */}
-      <div className="mb-6">
-        <p className="text-base font-semibold text-[var(--color-text-light)] mb-2">
-          제목
-        </p>
-        <div className="bg-white rounded-xl p-4 border-2 border-[var(--color-border)]">
-          <h2 className="text-xl font-bold">{title}</h2>
-        </div>
-      </div>
-
-      {/* 본문 미리보기 */}
-      <div className="mb-6">
-        <p className="text-base font-semibold text-[var(--color-text-light)] mb-2">
-          본문 미리보기
-        </p>
-        <div
-          className="bg-white rounded-xl p-5 border-2 border-[var(--color-border)] prose prose-lg max-w-none"
-          style={{ fontSize: "17px", lineHeight: "1.8" }}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      </div>
-
-      {/* 다시쓰기 버튼 */}
-      <div className="mb-4">
-        <button
-          onClick={generatePost}
-          className="w-full h-14 rounded-2xl text-lg font-semibold bg-white text-[var(--color-text)] border-2 border-[var(--color-border)] hover:bg-gray-50 transition-colors"
-        >
-          &#128260; 다시 써주세요
-        </button>
-      </div>
-
-      <BigButton onClick={handleProceed} variant="success">
-        이 글로 할게요
-      </BigButton>
-    </StepLayout>
-  );
-}
-
-function LoadingStep({ label, active }: { label: string; active: boolean }) {
-  return (
-    <div
-      className={`flex items-center gap-3 p-3 rounded-xl ${
-        active ? "bg-blue-50" : "bg-gray-50"
-      }`}
-    >
-      {active ? (
-        <span className="inline-block w-5 h-5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-      ) : (
-        <span className="text-green-500">&#10003;</span>
-      )}
-      <span className={`text-base ${active ? "text-blue-700" : "text-gray-500"}`}>
-        {label}
-      </span>
     </div>
   );
 }
 
-export default function Step3() {
+function GuideStep({
+  number,
+  title,
+  description,
+}: {
+  number: number;
+  title: string;
+  description: string;
+}) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <span className="text-xl text-[var(--color-text-light)]">불러오는 중...</span>
-        </div>
-      }
-    >
-      <Step3Content />
-    </Suspense>
+    <div className="flex gap-4">
+      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-lg font-bold">
+        {number}
+      </div>
+      <div className="flex-1">
+        <p className="text-lg font-semibold">{title}</p>
+        <p className="text-base text-[var(--color-text-light)] mt-1">
+          {description}
+        </p>
+      </div>
+    </div>
   );
 }
