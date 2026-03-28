@@ -15,19 +15,16 @@ export default function Step3() {
     const savedHtml = sessionStorage.getItem("blogHtml") || "";
     setTitle(savedTitle);
     setHtml(savedHtml);
-
-    if (!savedTitle && !savedHtml) {
-      router.push("/steps/step1");
-    }
+    if (!savedTitle && !savedHtml) router.push("/steps/step1");
   }, [router]);
 
   function htmlToPlainText(htmlStr: string): string {
     return htmlStr
-      .replace(/<h[23][^>]*>/gi, "\n\n\u2605 ")
-      .replace(/<\/h[23]>/gi, " \u2605\n")
+      .replace(/<h[23][^>]*>/gi, "\n\n★ ")
+      .replace(/<\/h[23]>/gi, " ★\n")
       .replace(/<\/p>/gi, "\n\n")
       .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<li>/gi, "\n\u2022 ")
+      .replace(/<li>/gi, "\n• ")
       .replace(/<\/li>/gi, "")
       .replace(/<strong>/gi, "**")
       .replace(/<\/strong>/gi, "**")
@@ -39,255 +36,109 @@ export default function Step3() {
   async function copyToClipboard(type: "title" | "body" | "all") {
     let textToCopy = "";
     let htmlToCopy = "";
-
-    if (type === "title") {
-      textToCopy = title;
-      htmlToCopy = title;
-    } else if (type === "body") {
-      textToCopy = htmlToPlainText(html);
-      htmlToCopy = html;
-    } else {
-      textToCopy = title + "\n\n" + htmlToPlainText(html);
-      htmlToCopy = `<h1>${title}</h1>\n${html}`;
-    }
+    if (type === "title") { textToCopy = title; htmlToCopy = title; }
+    else if (type === "body") { textToCopy = htmlToPlainText(html); htmlToCopy = html; }
+    else { textToCopy = title + "\n\n" + htmlToPlainText(html); htmlToCopy = `<h1>${title}</h1>\n${html}`; }
 
     try {
       if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
-        const blob = new Blob([htmlToCopy], { type: "text/html" });
-        const textBlob = new Blob([textToCopy], { type: "text/plain" });
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            "text/html": blob,
-            "text/plain": textBlob,
-          }),
-        ]);
-      } else {
-        await navigator.clipboard.writeText(textToCopy);
-      }
-
-      setCopied(true);
-      setCopyType(type);
-      setTimeout(() => {
-        setCopied(false);
-        setCopyType("");
-      }, 2000);
+        await navigator.clipboard.write([new ClipboardItem({
+          "text/html": new Blob([htmlToCopy], { type: "text/html" }),
+          "text/plain": new Blob([textToCopy], { type: "text/plain" }),
+        })]);
+      } else { await navigator.clipboard.writeText(textToCopy); }
+      setCopied(true); setCopyType(type);
+      setTimeout(() => { setCopied(false); setCopyType(""); }, 2000);
     } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = textToCopy;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-
-      setCopied(true);
-      setCopyType(type);
-      setTimeout(() => {
-        setCopied(false);
-        setCopyType("");
-      }, 2000);
+      const ta = document.createElement("textarea"); ta.value = textToCopy;
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      setCopied(true); setCopyType(type);
+      setTimeout(() => { setCopied(false); setCopyType(""); }, 2000);
     }
   }
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* \uC0C1\uB2E8 \uC9C4\uD589\uBC14 */}
-      <div className="px-5 pt-6 pb-2">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-base text-[var(--color-text-light)]">
-            3 / 3 \uB2E8\uACC4
-          </span>
+      <div className="px-4 pt-4 pb-1">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-[var(--color-text-light)]">3 / 3</span>
         </div>
-        <div className="w-full h-3 bg-[var(--color-border)] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[var(--color-success)] rounded-full transition-all duration-500"
-            style={{ width: "100%" }}
-          />
+        <div className="w-full h-1 bg-[var(--color-border)] rounded-full overflow-hidden">
+          <div className="h-full bg-[var(--color-success)] rounded-full transition-all duration-500" style={{ width: "100%" }} />
         </div>
       </div>
 
-      {/* \uC644\uB8CC \uD5E4\uB354 */}
-      <div className="px-5 pt-6 pb-4 text-center">
-        <div className="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-          <span className="text-4xl">{"\u2728"}</span>
+      <div className="px-4 pt-5 pb-3 text-center">
+        <div className="w-14 h-14 mx-auto mb-3 bg-green-50 rounded-full flex items-center justify-center">
+          <span className="text-2xl">&#10024;</span>
         </div>
-        <h1 className="text-2xl font-bold mb-2">\uAE00\uC774 \uC644\uC131\uB410\uC5B4\uC694!</h1>
-        <p className="text-lg text-[var(--color-text-light)]">
-          \uC544\uB798 \uC21C\uC11C\uB300\uB85C \uBE14\uB85C\uADF8\uC5D0 \uC62C\uB824\uBCF4\uC138\uC694
-        </p>
+        <h1 className="text-xl font-bold mb-1">글이 완성됐어요!</h1>
+        <p className="text-sm text-[var(--color-text-light)]">아래 순서대로 블로그에 올려보세요</p>
       </div>
 
-      {/* \uBCF5\uC0AC \uBC84\uD2BC \uC601\uC5ED */}
-      <div className="px-5 space-y-3 mb-8">
-        <button
-          onClick={() => copyToClipboard("title")}
-          className={`
-            w-full p-5 rounded-2xl border-2 text-left transition-all
-            ${
-              copied && copyType === "title"
-                ? "border-green-500 bg-green-50"
-                : "border-[var(--color-border)] bg-white hover:border-blue-300"
-            }
-          `}
-        >
+      <div className="px-4 space-y-2 mb-6">
+        <button onClick={() => copyToClipboard("title")} className={`w-full p-3.5 rounded-xl border text-left transition-all ${copied && copyType === "title" ? "border-green-400 bg-green-50" : "border-[var(--color-border)] bg-white hover:border-blue-200"}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-base text-[var(--color-text-light)] mb-1">
-                \uC81C\uBAA9
-              </p>
-              <p className="text-lg font-semibold truncate">{title}</p>
+              <p className="text-xs text-[var(--color-text-light)] mb-0.5">제목</p>
+              <p className="text-sm font-semibold truncate">{title}</p>
             </div>
-            <span className="text-3xl flex-shrink-0 ml-3">
-              {copied && copyType === "title" ? "\u2705" : "\uD83D\uDCCB"}
-            </span>
+            <span className="text-xl flex-shrink-0 ml-2">{copied && copyType === "title" ? "&#9989;" : "&#128203;"}</span>
           </div>
-          {copied && copyType === "title" && (
-            <p className="text-green-600 font-semibold mt-2">
-              \uC81C\uBAA9\uC774 \uBCF5\uC0AC\uB410\uC5B4\uC694!
-            </p>
-          )}
+          {copied && copyType === "title" && <p className="text-green-600 text-xs font-semibold mt-1">제목이 복사됐어요!</p>}
         </button>
 
-        <button
-          onClick={() => copyToClipboard("body")}
-          className={`
-            w-full p-5 rounded-2xl border-2 text-left transition-all
-            ${
-              copied && copyType === "body"
-                ? "border-green-500 bg-green-50"
-                : "border-[var(--color-border)] bg-white hover:border-blue-300"
-            }
-          `}
-        >
+        <button onClick={() => copyToClipboard("body")} className={`w-full p-3.5 rounded-xl border text-left transition-all ${copied && copyType === "body" ? "border-green-400 bg-green-50" : "border-[var(--color-border)] bg-white hover:border-blue-200"}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-base text-[var(--color-text-light)] mb-1">
-                \uBCF8\uBB38 \uB0B4\uC6A9
-              </p>
-              <p className="text-lg font-semibold">
-                {"\uD83D\uDCCB"} \uBCF8\uBB38 \uBCF5\uC0AC\uD558\uAE30
-              </p>
+              <p className="text-xs text-[var(--color-text-light)] mb-0.5">본문 내용</p>
+              <p className="text-sm font-semibold">&#128203; 본문 복사하기</p>
             </div>
-            <span className="text-3xl flex-shrink-0 ml-3">
-              {copied && copyType === "body" ? "\u2705" : "\uD83D\uDCCB"}
-            </span>
+            <span className="text-xl flex-shrink-0 ml-2">{copied && copyType === "body" ? "&#9989;" : "&#128203;"}</span>
           </div>
-          {copied && copyType === "body" && (
-            <p className="text-green-600 font-semibold mt-2">
-              \uBCF8\uBB38\uC774 \uBCF5\uC0AC\uB410\uC5B4\uC694!
-            </p>
-          )}
+          {copied && copyType === "body" && <p className="text-green-600 text-xs font-semibold mt-1">본문이 복사됐어요!</p>}
         </button>
 
-        <button
-          onClick={() => copyToClipboard("all")}
-          className={`
-            w-full p-6 rounded-2xl border-2 text-center transition-all text-xl font-bold
-            ${
-              copied && copyType === "all"
-                ? "border-green-500 bg-green-50 text-green-700"
-                : "border-[var(--color-primary)] bg-blue-50 text-[var(--color-primary)] hover:bg-blue-100"
-            }
-          `}
-        >
-          {copied && copyType === "all"
-            ? "\u2705 \uC804\uCCB4\uAC00 \uBCF5\uC0AC\uB410\uC5B4\uC694!"
-            : "\uD83D\uDCCB \uC81C\uBAA9 + \uBCF8\uBB38 \uD55C\uBC88\uC5D0 \uBCF5\uC0AC\uD558\uAE30"}
+        <button onClick={() => copyToClipboard("all")} className={`w-full p-4 rounded-xl border text-center transition-all text-base font-bold ${copied && copyType === "all" ? "border-green-400 bg-green-50 text-green-700" : "border-[var(--color-primary)] bg-blue-50 text-[var(--color-primary)] hover:bg-blue-100"}`}>
+          {copied && copyType === "all" ? "&#9989; 전체가 복사됐어요!" : "&#128203; 제목 + 본문 한번에 복사"}
         </button>
       </div>
 
-      {/* \uBC1C\uD589 \uAC00\uC774\uB4DC */}
-      <div className="px-5 mb-8">
-        <div className="bg-white rounded-2xl p-6 border-2 border-[var(--color-border)]">
-          <h3 className="text-xl font-bold mb-4">
-            {"\uD83D\uDCDD"} \uBE14\uB85C\uADF8\uC5D0 \uC62C\uB9AC\uB294 \uBC29\uBC95
-          </h3>
-          <div className="space-y-5">
-            <GuideStep
-              number={1}
-              title="\uB124\uC774\uBC84 \uBE14\uB85C\uADF8 \uC5F4\uAE30"
-              description="\uC544\uB798 \uBC84\uD2BC\uC744 \uB20C\uB7EC \uBE14\uB85C\uADF8\uB97C \uC5F4\uC5B4\uC8FC\uC138\uC694"
-            />
-            <GuideStep
-              number={2}
-              title={'"\uAE00\uC4F0\uAE30" \uBC84\uD2BC \uB204\uB974\uAE30'}
-              description="\uBE14\uB85C\uADF8 \uD654\uBA74 \uC704\uCABD\uC5D0 \uC788\uB294 \uCD08\uB85D\uC0C9 \uAE00\uC4F0\uAE30 \uBC84\uD2BC\uC744 \uB20C\uB7EC\uC8FC\uC138\uC694"
-            />
-            <GuideStep
-              number={3}
-              title="\uC81C\uBAA9 \uBD99\uC5EC\uB123\uAE30"
-              description='\uC704\uC5D0\uC11C "\uC81C\uBAA9 \uBCF5\uC0AC\uD558\uAE30"\uB97C \uB204\uB978 \uB4A4, \uC81C\uBAA9 \uCE78\uC5D0 \uBD99\uC5EC\uB123\uAE30 \uD574\uC8FC\uC138\uC694'
-            />
-            <GuideStep
-              number={4}
-              title="\uBCF8\uBB38 \uBD99\uC5EC\uB123\uAE30"
-              description='"\uBCF8\uBB38 \uBCF5\uC0AC\uD558\uAE30"\uB97C \uB204\uB978 \uB4A4, \uAE00 \uB0B4\uC6A9 \uCE78\uC5D0 \uBD99\uC5EC\uB123\uAE30 \uD574\uC8FC\uC138\uC694'
-            />
-            <GuideStep
-              number={5}
-              title={'"\uBC1C\uD589" \uBC84\uD2BC \uB204\uB974\uAE30'}
-              description="\uC624\uB978\uCABD \uC704\uC758 \uBC1C\uD589 \uBC84\uD2BC\uC744 \uB204\uB974\uBA74 \uB05D\uC774\uC5D0\uC694!"
-            />
+      <div className="px-4 mb-6">
+        <div className="bg-white rounded-xl p-4 border border-[var(--color-border)]">
+          <h3 className="text-sm font-bold mb-3">&#128221; 블로그에 올리는 방법</h3>
+          <div className="space-y-3">
+            <GuideStep number={1} title="네이버 블로그 열기" description="아래 버튼을 눌러 블로그를 열어주세요" />
+            <GuideStep number={2} title={'"글쓰기" 버튼 누르기'} description="블로그 화면 위쪽의 초록색 글쓰기 버튼" />
+            <GuideStep number={3} title="제목 붙여넣기" description="제목 복사 후 제목 칸에 붙여넣기" />
+            <GuideStep number={4} title="본문 붙여넣기" description="본문 복사 후 글 내용 칸에 붙여넣기" />
+            <GuideStep number={5} title={'"발행" 버튼 누르기'} description="오른쪽 위의 발행 버튼을 누르면 끝!" />
           </div>
         </div>
       </div>
 
-      {/* \uB124\uC774\uBC84 \uBE14\uB85C\uADF8 \uBC14\uB85C\uAC00\uAE30 */}
-      <div className="px-5 mb-6">
-        <a
-          href="https://blog.naver.com/MyBlog.naver"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="
-            flex items-center justify-center gap-2
-            w-full h-16 rounded-2xl text-xl font-bold
-            bg-[#03C75A] hover:bg-[#02b350] text-white
-            shadow-lg transition-all duration-200 active:scale-[0.98]
-          "
-        >
-          {"\uD83D\uDFE2"} \uB124\uC774\uBC84 \uBE14\uB85C\uADF8 \uC5F4\uAE30
+      <div className="px-4 mb-4">
+        <a href="https://blog.naver.com/MyBlog.naver" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 w-full h-12 rounded-xl text-base font-semibold bg-[#03C75A] hover:bg-[#02b350] text-white transition-all duration-200 active:scale-[0.98]">
+          네이버 블로그 열기
         </a>
       </div>
 
-      {/* \uCC98\uC74C\uC73C\uB85C */}
-      <div className="px-5 pb-10">
-        <button
-          onClick={() => {
-            sessionStorage.removeItem("blogTitle");
-            sessionStorage.removeItem("blogHtml");
-            router.push("/");
-          }}
-          className="
-            w-full h-14 rounded-2xl text-lg font-semibold
-            bg-white text-[var(--color-text-light)] border-2 border-[var(--color-border)]
-            hover:bg-gray-50 transition-colors
-          "
-        >
-          \uCC98\uC74C\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30
+      <div className="px-4 pb-8">
+        <button onClick={() => { sessionStorage.removeItem("blogTitle"); sessionStorage.removeItem("blogHtml"); router.push("/"); }} className="w-full h-11 rounded-xl text-sm font-medium bg-white text-[var(--color-text-light)] border border-[var(--color-border)] hover:bg-gray-50 transition-colors">
+          처음으로 돌아가기
         </button>
       </div>
     </div>
   );
 }
 
-function GuideStep({
-  number,
-  title,
-  description,
-}: {
-  number: number;
-  title: string;
-  description: string;
-}) {
+function GuideStep({ number, title, description }: { number: number; title: string; description: string }) {
   return (
-    <div className="flex gap-4">
-      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-lg font-bold">
-        {number}
-      </div>
+    <div className="flex gap-3">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-xs font-bold">{number}</div>
       <div className="flex-1">
-        <p className="text-lg font-semibold">{title}</p>
-        <p className="text-base text-[var(--color-text-light)] mt-1">
-          {description}
-        </p>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-[var(--color-text-light)] mt-0.5">{description}</p>
       </div>
     </div>
   );
