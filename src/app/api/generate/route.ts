@@ -87,10 +87,11 @@ export async function POST(request: NextRequest) {
     console.log(`[STORE_NOT_FOUND 포함여부] ${searchResults.includes("[STORE_NOT_FOUND]")}`);
 
     // === 검색 결과 검증: 매장 정보를 찾지 못한 경우 에러 반환 ===
-    if (
-      searchResults.length < 80 ||
-      searchResults.includes("[STORE_NOT_FOUND]")
-    ) {
+    // [STORE_NOT_FOUND]가 있고 결과가 짧으면 실패
+    const hasNotFound = searchResults.includes("[STORE_NOT_FOUND]");
+    const tooShort = searchResults.length < 80;
+    console.log(`[검증] NOT_FOUND=${hasNotFound}, length=${searchResults.length}`);
+    if (tooShort || (hasNotFound && searchResults.length < 300)) {
       return NextResponse.json(
         {
           error:
@@ -99,8 +100,11 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    // [STORE_FOUND] 마커 제거 후 본문만 전달
-    const cleanedSearchResults = searchResults.replace("[STORE_FOUND]", "").trim();
+    // 마커 제거 후 본문만 전달
+    const cleanedSearchResults = searchResults
+      .replace("[STORE_FOUND]", "")
+      .replace("[STORE_NOT_FOUND]", "")
+      .trim();
 
     const input: GenerateInput = {
       storeName,

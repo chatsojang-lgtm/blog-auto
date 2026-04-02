@@ -36,8 +36,10 @@ function buildSearchPrompt(input: { storeName: string; storeAddress: string; the
 절대로 정보를 지어내지 마세요. 검색으로 확인된 사실만 기록하세요.
 
 중요: 응답의 첫 줄에 반드시 다음 중 하나를 작성하세요:
-- 매장을 찾은 경우: "[STORE_FOUND]"
-- 매장을 찾지 못한 경우: "[STORE_NOT_FOUND]"`;
+- 매장 또는 관련 브랜드/지점 정보를 하나라도 찾은 경우: "[STORE_FOUND]"
+- 매장명, 브랜드, 해당 지역에서 관련 정보를 전혀 찾지 못한 경우에만: "[STORE_NOT_FOUND]"
+
+주의: 정확한 매장명이 아니더라도 같은 브랜드의 같은 지역 매장 정보를 찾았다면 반드시 "[STORE_FOUND]"로 표기하고 찾은 정보를 정리하세요.`;
 }
 
 /** 시스템 프롬프트 - 검색 결과 기반 */
