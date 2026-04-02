@@ -93,13 +93,26 @@ export async function POST(request: NextRequest) {
       "검색되지 않",
       "확인되지 않",
       "관련 정보가 없",
+      "정보가 없",
+      "확인할 수 없",
+      "나오지 않",
+      "검색이 되지 않",
+      "정확한 정보를 찾기 어려",
+      "일치하는 결과",
+      "존재하지 않",
     ];
-    const noInfoCount = noInfoPatterns.filter((p) =>
+    // 패턴 등장 횟수 합산 (동일 패턴 여러 번 등장도 카운트)
+    const noInfoTotal = noInfoPatterns.reduce((count, p) => {
+      const matches = searchResults.split(p).length - 1;
+      return count + matches;
+    }, 0);
+    const noInfoUniqueCount = noInfoPatterns.filter((p) =>
       searchResults.includes(p)
     ).length;
     if (
       searchResults.length < 100 ||
-      noInfoCount >= 4
+      noInfoUniqueCount >= 3 ||
+      noInfoTotal >= 5
     ) {
       return NextResponse.json(
         {
@@ -139,10 +152,11 @@ export async function POST(request: NextRequest) {
       buildBody2Prompt(input, introResult + body1Result)
     );
 
-    // Step D: 결론/FAQ 생성
+    // Step D: 결론/FAQ 생성 (이전 내용 전달하여 중복 방지)
+    const prevAllHtml = [introResult, body1Result, body2Result].join("\n\n");
     const conclusionResult = await callClaude(
       systemPrompt,
-      buildConclusionPrompt(input)
+      buildConclusionPrompt(input, prevAllHtml)
     );
 
     // 전체 병합
