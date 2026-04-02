@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
     console.log(`[검색 시작] ${storeName} - ${storeAddress}`);
     const searchResults = await searchStoreInfo(storeName, storeAddress, theme);
     console.log(`[검색 완료] 결과 길이: ${searchResults.length}자`);
+    console.log(`[검색 결과 앞 200자] ${searchResults.substring(0, 200)}`);
+    console.log(`[STORE_NOT_FOUND 포함여부] ${searchResults.includes("[STORE_NOT_FOUND]")}`);
 
     // === 검색 결과 검증: 매장 정보를 찾지 못한 경우 에러 반환 ===
     if (
