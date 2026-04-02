@@ -85,34 +85,9 @@ export async function POST(request: NextRequest) {
     console.log(`[검색 완료] 결과 길이: ${searchResults.length}자`);
 
     // === 검색 결과 검증: 매장 정보를 찾지 못한 경우 에러 반환 ===
-    const noInfoPatterns = [
-      "확인 불가",
-      "검색 결과가 없",
-      "찾을 수 없",
-      "정보를 찾지 못",
-      "검색되지 않",
-      "확인되지 않",
-      "관련 정보가 없",
-      "정보가 없",
-      "확인할 수 없",
-      "나오지 않",
-      "검색이 되지 않",
-      "정확한 정보를 찾기 어려",
-      "일치하는 결과",
-      "존재하지 않",
-    ];
-    // 패턴 등장 횟수 합산 (동일 패턴 여러 번 등장도 카운트)
-    const noInfoTotal = noInfoPatterns.reduce((count, p) => {
-      const matches = searchResults.split(p).length - 1;
-      return count + matches;
-    }, 0);
-    const noInfoUniqueCount = noInfoPatterns.filter((p) =>
-      searchResults.includes(p)
-    ).length;
     if (
-      searchResults.length < 100 ||
-      noInfoUniqueCount >= 3 ||
-      noInfoTotal >= 5
+      searchResults.length < 80 ||
+      searchResults.includes("[STORE_NOT_FOUND]")
     ) {
       return NextResponse.json(
         {
@@ -122,12 +97,14 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+    // [STORE_FOUND] 마커 제거 후 본문만 전달
+    const cleanedSearchResults = searchResults.replace("[STORE_FOUND]", "").trim();
 
     const input: GenerateInput = {
       storeName,
       storeAddress,
       theme,
-      searchResults,
+      searchResults: cleanedSearchResults,
       keywords,
     };
 
